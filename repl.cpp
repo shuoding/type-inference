@@ -4,6 +4,54 @@
 #include <map>
 #include <utility>
 
+struct Token {
+	Token() {}
+	virtual std::string getType() {
+		return "Token";
+	}
+	virtual ~Token() {}
+}
+
+struct N : Token { // Variable Name
+	N(const std::string &val0) : val(val0) {}
+	std::string getType() override {
+		return "N";
+	}
+	~N() override {}
+
+	std::string val;
+}
+
+struct B : Token { // Boolean Literal
+	B(bool val0) : val(val0) {}
+	std::string getType() override {
+		return "B";
+	}
+	~B() override {}
+
+	bool val;
+}
+
+struct I : Token { // Integer Literal
+	I(int val0) : val(val0) {}
+	std::string getType() override {
+		return "I";
+	}
+	~I() override {}
+
+	int val;
+}
+
+struct K : Token { // Reserved Keyword
+	K(const std::string &keyword0) : keyword(keyword0) {}
+	std::string getType() override {
+		return "K";
+	}
+	~K() override {}
+
+	std::string keyword;
+}
+
 struct Node {
 	Node() {}
 	virtual std::string getType() {
@@ -195,13 +243,16 @@ struct UnionFind {
 	}
 }
 
-Node parseHead(const std::string &source) {
+std::vector<Token> tokenize(const std::string &source) {
 }
 
-Node parseTail(const std::string &source) {
+Node parseHead(const std::vector<Token> &stream) {
 }
 
-AST parse(const std::string &source) {
+Node parseTail(const std::vector<Token> &stream) {
+}
+
+AST parse(const std::vector<Token> &stream) {
 }
 
 std::pair<bool, std::map<std::string, std::string>> typecheck(const AST &ast) {
