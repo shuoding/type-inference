@@ -169,6 +169,32 @@ struct AST {
 	Node *root;
 }
 
+struct UnionFind {
+	int n;
+	std::vector<int> prev;
+	UnionFind(int n0) : n(n0) {
+		for (int i = 0; i < n0; i++) {
+			prev.push_back(i);
+		}
+	}
+	int find(int x) {
+		int r = x;
+		while (prev[r] != r) {
+			r = prev[r];
+		}
+		int i = x, j;
+		while (prev[i] != r) {
+			j = prev[i];
+			prev[i] = r;
+			i = j;
+		}
+		return r;
+	}
+	void join(int x, int y) { // The second argument serves as the root.
+		prev[find(x)] = find(y);
+	}
+}
+
 Node parseHead(const std::string &source) {
 }
 
