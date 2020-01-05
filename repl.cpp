@@ -266,7 +266,7 @@ int main() {
 	std::string line;
 	while (true) {
 		getline(std::cin, line);
-		AST ast = parse(line);
+		AST ast = parse(tokenize(line));
 		auto p1 = typecheck(ast);
 		if (p1.first) {
 			auto typeMap = p1.second;
