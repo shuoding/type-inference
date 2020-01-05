@@ -244,7 +244,86 @@ struct UnionFind {
 	}
 }
 
+/*
+
+variable names: [a-zA-Z]+
+boolean literal: true false
+integer literal: -?[0-9]+
+reserved keywords: ( ) + - * / && || ! if then else let = in
+
+*/
+
+bool myIsAlpha() {
+}
+
+bool myIsDigit() {
+}
+
+bool myIsSpace() {
+}
+
 std::vector<Token*> tokenize(const std::string &source) {
+	std::vector<Token*> ret;
+	int n = source.size();
+	int i = 0;
+	while (i < n) {
+		if (myIsAlpha(source[i])) { // starting with English letters
+			std::string word;
+			i++;
+			while (i < n && myIsAlpha(source[i])) {
+			}
+		} else { // starting with other characters
+			switch (source[i]) {
+			case '(':
+				ret.push_back(new K("("));
+				i++;
+				break;
+			case ')':
+				ret.push_back(new K(")"));
+				i++;
+				break;
+			case '+':
+				ret.push_back(new K("+"));
+				i++;
+				break;
+			case '-':
+				if (i + 1 < n && source[i + 1])
+				ret.push_back(new K("-"));
+				i++;
+				break;
+			case '*':
+				ret.push_back(new K("*"));
+				i++;
+				break;
+			case '/':
+				ret.push_back(new K("/"));
+				i++;
+				break;
+			case '&':
+				if (i + 1 < n && source[i + 1] == '&') 	{
+					i += 2;
+				} else {
+				}
+				break;
+			case '|':
+				if (i + 1 < n && source[i + 1] == '|') {
+					i += 2;
+				} else {
+				}
+				break;
+			case '!':
+				ret.push_back(new K("!"));
+				i++;
+				break;
+			case '=':
+				ret.push_back(new K("="));
+				i++;
+				break;
+			default: // nonnegative digits
+				break;
+			}
+		}
+	}
 }
 
 Node parseHead(const std::vector<Token*> &stream) {
