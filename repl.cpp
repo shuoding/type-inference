@@ -4,6 +4,8 @@
 #include <map>
 #include <utility>
 #include <memory>
+#include <cctype>
+#include <cstdlib>
 
 struct Token {
 	Token() {}
@@ -253,13 +255,16 @@ reserved keywords: ( ) + - * / && || ! if then else let = in
 
 */
 
-bool myIsAlpha() {
+bool myIsAlpha(char ch) {
+	return std::isalpha(static_cast<unsigned char>(ch));
 }
 
-bool myIsDigit() {
+bool myIsDigit(char ch) {
+	return std::isdigit(static_cast<unsigned char>(ch));
 }
 
 bool myIsSpace() {
+	return std::isspace(static_cast<unsigned char>(ch));
 }
 
 std::vector<Token*> tokenize(const std::string &source) {
@@ -269,8 +274,26 @@ std::vector<Token*> tokenize(const std::string &source) {
 	while (i < n) {
 		if (myIsAlpha(source[i])) { // starting with English letters
 			std::string word;
-			i++;
 			while (i < n && myIsAlpha(source[i])) {
+				word.push_back(source[i]);
+				i++;
+			}
+			if (word == "true") {
+				ret.push_back(new B(true));
+			} else if (word == "false") {
+				ret.push_back(new B(false));
+			} else if (word == "if") {
+				ret.push_back(new K("if"));
+			} else if (word == "then") {
+				ret.push_back(new K("then"));
+			} else if (word == "else") {
+				ret.push_back(new K("else"));
+			} else if (word == "let") {
+				ret.push_back(new K("let"));
+			} else if (word == "in") {
+				ret.push_back(new K("in"));
+			} else {
+				ret.push_back(new N(word));
 			}
 		} else { // starting with other characters
 			switch (source[i]) {
@@ -287,9 +310,18 @@ std::vector<Token*> tokenize(const std::string &source) {
 				i++;
 				break;
 			case '-':
-				if (i + 1 < n && source[i + 1])
-				ret.push_back(new K("-"));
-				i++;
+				if (i + 1 < n && myIsDigit(source[i + 1])) {
+					i++;
+					std::string num = "-";
+					while (i < n && myIsDigit(source[i])) {
+						num.push_back(source[i]);
+						i++;
+					}
+					ret.push_back(new I(std::stoi(num)));
+				} else {
+					ret.push_back(new K("-"));
+					i++;
+				}
 				break;
 			case '*':
 				ret.push_back(new K("*"));
@@ -301,14 +333,20 @@ std::vector<Token*> tokenize(const std::string &source) {
 				break;
 			case '&':
 				if (i + 1 < n && source[i + 1] == '&') 	{
+					ret.push_back(new K("&&"));
 					i += 2;
 				} else {
+					std::cerr << "unrecognized character" << std::endl;
+					std::exit(EXIT_FAILURE);
 				}
 				break;
 			case '|':
 				if (i + 1 < n && source[i + 1] == '|') {
+					ret.push_back(new K("||"));
 					i += 2;
 				} else {
+					std::cerr << "unrecognized character" << std::endl;
+					std::exit(EXIT_FAILURE);
 				}
 				break;
 			case '!':
@@ -320,10 +358,22 @@ std::vector<Token*> tokenize(const std::string &source) {
 				i++;
 				break;
 			default: // nonnegative digits
+				std::string num;
+				while (myIsDigit(source[i])) {
+					num.push_back(source[i]);
+					i++;
+				}
+				if (num.size() == 0) {
+					std::cerr << "unrecognized character" << std::endl;
+					std::exit(EXIT_FAILURE);
+				} else {
+					ret.push_back(new I(std::stoi(num)));
+				}
 				break;
 			}
 		}
 	}
+	return ret;
 }
 
 Node parseHead(const std::vector<Token*> &stream) {
