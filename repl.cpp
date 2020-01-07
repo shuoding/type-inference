@@ -6,6 +6,7 @@
 #include <memory>
 #include <cctype>
 #include <cstdlib>
+#include <queue>
 
 struct Token {
 	Token() {}
@@ -267,8 +268,8 @@ bool myIsSpace() {
 	return std::isspace(static_cast<unsigned char>(ch));
 }
 
-std::vector<Token*> tokenize(const std::string &source) {
-	std::vector<Token*> ret;
+std::queue<Token*> tokenize(const std::string &source) {
+	std::queue<Token*> ret;
 	int n = source.size();
 	int i = 0;
 	while (i < n) {
@@ -279,34 +280,34 @@ std::vector<Token*> tokenize(const std::string &source) {
 				i++;
 			}
 			if (word == "true") {
-				ret.push_back(new B(true));
+				ret.push(new B(true));
 			} else if (word == "false") {
-				ret.push_back(new B(false));
+				ret.push(new B(false));
 			} else if (word == "if") {
-				ret.push_back(new K("if"));
+				ret.push(new K("if"));
 			} else if (word == "then") {
-				ret.push_back(new K("then"));
+				ret.push(new K("then"));
 			} else if (word == "else") {
-				ret.push_back(new K("else"));
+				ret.push(new K("else"));
 			} else if (word == "let") {
-				ret.push_back(new K("let"));
+				ret.push(new K("let"));
 			} else if (word == "in") {
-				ret.push_back(new K("in"));
+				ret.push(new K("in"));
 			} else {
-				ret.push_back(new N(word));
+				ret.push(new N(word));
 			}
 		} else { // starting with other characters
 			switch (source[i]) {
 			case '(':
-				ret.push_back(new K("("));
+				ret.push(new K("("));
 				i++;
 				break;
 			case ')':
-				ret.push_back(new K(")"));
+				ret.push(new K(")"));
 				i++;
 				break;
 			case '+':
-				ret.push_back(new K("+"));
+				ret.push(new K("+"));
 				i++;
 				break;
 			case '-':
@@ -317,23 +318,23 @@ std::vector<Token*> tokenize(const std::string &source) {
 						num.push_back(source[i]);
 						i++;
 					}
-					ret.push_back(new I(std::stoi(num)));
+					ret.push(new I(std::stoi(num)));
 				} else {
-					ret.push_back(new K("-"));
+					ret.push(new K("-"));
 					i++;
 				}
 				break;
 			case '*':
-				ret.push_back(new K("*"));
+				ret.push(new K("*"));
 				i++;
 				break;
 			case '/':
-				ret.push_back(new K("/"));
+				ret.push(new K("/"));
 				i++;
 				break;
 			case '&':
 				if (i + 1 < n && source[i + 1] == '&') 	{
-					ret.push_back(new K("&&"));
+					ret.push(new K("&&"));
 					i += 2;
 				} else {
 					std::cerr << "unrecognized character" << std::endl;
@@ -342,7 +343,7 @@ std::vector<Token*> tokenize(const std::string &source) {
 				break;
 			case '|':
 				if (i + 1 < n && source[i + 1] == '|') {
-					ret.push_back(new K("||"));
+					ret.push(new K("||"));
 					i += 2;
 				} else {
 					std::cerr << "unrecognized character" << std::endl;
@@ -350,11 +351,11 @@ std::vector<Token*> tokenize(const std::string &source) {
 				}
 				break;
 			case '!':
-				ret.push_back(new K("!"));
+				ret.push(new K("!"));
 				i++;
 				break;
 			case '=':
-				ret.push_back(new K("="));
+				ret.push(new K("="));
 				i++;
 				break;
 			default: // nonnegative digits
@@ -367,7 +368,7 @@ std::vector<Token*> tokenize(const std::string &source) {
 					std::cerr << "unrecognized character" << std::endl;
 					std::exit(EXIT_FAILURE);
 				} else {
-					ret.push_back(new I(std::stoi(num)));
+					ret.push(new I(std::stoi(num)));
 				}
 				break;
 			}
@@ -376,13 +377,41 @@ std::vector<Token*> tokenize(const std::string &source) {
 	return ret;
 }
 
-Node parseHead(const std::vector<Token*> &stream) {
+/*
+
+<expr> := <variable> # any non-empty alphabetic sequences except for boolean literals and keywords :: Var
+        | <integer> :: Int
+        | <boolean> :: Bool
+        | ( + <expr1> <expr2> ) :: Add
+        | ( - <expr1> <expr2> ) :: Sub
+        | ( * <expr1> <expr2> ) :: Mul
+        | ( / <expr1> <expr2> ) :: Div
+        | ( && <expr1> <expr2> ) :: And
+        | ( || <expr1> <expr2> ) :: Or
+        | ( ! <expr> ) :: Not
+        | ( if <expr1> then <expr2> else <expr3> ) :: If
+        | ( let <variable> = <expr1> in <expr2> ) :: Let
+ */
+
+Node *parseHead(std::queue<Token*> &q) {
+	Token *cur = q.top();
+	q.pop();
+	if (cur->getType() == "N") { // Var
+	} else if (cur->getType() == "I") { // Int
+	} else if (cur->getType() == "B") { // Bool
+	} else if (cur->getType() == "K") { // (
+	} else {
+		std::cerr << "ERROR1" << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
 }
 
-Node parseTail(const std::vector<Token*> &stream) {
+Node *parseTail(std::queue<Token*> &q) {
 }
 
-AST parse(const std::vector<Token*> &stream) {
+AST parse(const std::string &source) {
+	std::queue<Token*> q = tokenize(source);
+	return AST(parseHead(q));
 }
 
 std::pair<bool, std::map<std::string, std::string>> typecheck(const AST &ast) {
