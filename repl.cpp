@@ -4,14 +4,10 @@
 <expr> := <variable> # any non-empty alphabetic sequences except for boolean literals and keywords
         | <integer>
         | <boolean>
-        | ( + <expr1> <expr2> )
         | ( - <expr1> <expr2> )
         | ( * <expr1> <expr2> )
         | ( / <expr1> <expr2> )
-        | ( < <expr1> <expr2> ) // TODO
-        | ( && <expr1> <expr2> )
-        | ( || <expr1> <expr2> )
-        | ( ! <expr> )
+        | ( < <expr1> <expr2> )
         | ( if <expr1> then <expr2> else <expr3> )
         | ( let <variable> = <expr1> in <expr2> )
 
@@ -25,19 +21,16 @@
 [<boolean>]
 [<expr>]
 
-# Type Constraints
-<variable>                               : [<variable>]
-<integer>                                : [<integer>] = INT
-<boolean>                                : [<boolean>] = BOOL
-( + <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT
-( - <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT
-( * <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT
-( / <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT
-( && <expr1> <expr2> )                   : [<expr1>] = [<expr2>] = BOOL
-( || <expr1> <expr2> )                   : [<expr1>] = [<expr2>] = BOOL
-( ! <expr> )                             : [<expr>] = BOOL
-( if <expr1> then <expr2> else <expr3> ) : [<expr1>] = BOOL; [<expr2>] = [<expr3>]
-( let <variable> = <expr1> in <expr2> )  : [<variable>] = [<expr1>]
+# Type Constraints ([] represents the whole expression)
+<variable>                               : [] = x
+<integer>                                : [] = INT
+<boolean>                                : [] = BOOL
+( - <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = INT
+( * <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = INT
+( / <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = INT
+( < <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = BOOL
+( if <expr1> then <expr2> else <expr3> ) : [<expr1>] = BOOL; [<expr2>] = [<expr3>], [] = [<expr2>]
+( let <variable> = <expr1> in <expr2> )  : [<variable>] = [<expr1>], [] = [<expr2>]
 
 */
 
@@ -97,7 +90,7 @@ struct K : public Token { // Reserved Keyword
 variable names: [a-zA-Z]+
 boolean literal: true false
 integer literal: -?[0-9]+
-reserved keywords: ( ) + - * / && || ! if then else let = in
+reserved keywords: ( ) - * / < if then else let = in
 
 */
 
@@ -148,10 +141,6 @@ std::queue<Token*> tokenize(const std::string &source) {
 				ret.push(new K(")"));
 				i++;
 				break;
-			case '+':
-				ret.push(new K("+"));
-				i++;
-				break;
 			case '-': // operator or negative sign
 				if (i + 1 < n && isd(source[i + 1])) {
 					i++;
@@ -173,26 +162,8 @@ std::queue<Token*> tokenize(const std::string &source) {
 				ret.push(new K("/"));
 				i++;
 				break;
-			case '&':
-				if (i + 1 < n && source[i + 1] == '&') 	{
-					ret.push(new K("&&"));
-					i += 2;
-				} else {
-					std::cerr << "unrecognized token: " << source[i] << source[i + 1] << std::endl;
-					std::exit(EXIT_FAILURE);
-				}
-				break;
-			case '|':
-				if (i + 1 < n && source[i + 1] == '|') {
-					ret.push(new K("||"));
-					i += 2;
-				} else {
-					std::cerr << "unrecognized token: " << source[i] << source[i + 1] << std::endl;
-					std::exit(EXIT_FAILURE);
-				}
-				break;
-			case '!':
-				ret.push(new K("!"));
+			case '<':
+				ret.push(new K("<"));
 				i++;
 				break;
 			case '=':
@@ -259,14 +230,6 @@ struct Bool : public Node {
 	bool val;
 };
 
-struct Add : public Node {
-	Add(Node *n10, Node *n20) : n1(n10), n2(n20) {}
-	std::string getType() override { return "Add"; }
-	std::string getLiteral() override { return "[Add " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
-	~Add() override { delete n1; delete n2; }
-	Node *n1, *n2;
-};
-
 struct Sub : public Node {
 	Sub(Node *n10, Node *n20) : n1(n10), n2(n20) {}
 	std::string getType() override { return "Sub"; }
@@ -291,28 +254,12 @@ struct Div : public Node {
 	Node *n1, *n2;
 };
 
-struct And : public Node {
-	And(Node *n10, Node *n20) : n1(n10), n2(n20) {}
-	std::string getType() override { return "And"; }
-	std::string getLiteral() override { return "[And " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
-	~And() override { delete n1; delete n2; }
+struct Lt : public Node {
+	Lt(Node *n10, Node *n20) : n1(n10), n2(n20) {}
+	std::string getType() override { return "Lt"; }
+	std::string getLiteral() override { return "[Lt " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
+	~Lt() override { delete n1; delete n2; }
 	Node *n1, *n2;
-};
-
-struct Or : public Node {
-	Or(Node *n10, Node *n20) : n1(n10), n2(n20) {}
-	std::string getType() override { return "Or"; }
-	std::string getLiteral() override { return "[Or " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
-	~Or() override { delete n1; delete n2; }
-	Node *n1, *n2;
-};
-
-struct Not : public Node {
-	Not(Node *n0) : n(n0) {}
-	std::string getType() override { return "Not"; }
-	std::string getLiteral() override { return "[Not " + n->getLiteral() + "]"; }
-	~Not() override { delete n; }
-	Node *n;
 };
 
 struct If : public Node {
@@ -336,13 +283,10 @@ struct Let : public Node {
 <expr> := <variable> # any non-empty alphabetic sequences except for boolean literals and keywords :: Var
         | <integer> :: Int
         | <boolean> :: Bool
-        | ( + <expr1> <expr2> ) :: Add
         | ( - <expr1> <expr2> ) :: Sub
         | ( * <expr1> <expr2> ) :: Mul
         | ( / <expr1> <expr2> ) :: Div
-        | ( && <expr1> <expr2> ) :: And
-        | ( || <expr1> <expr2> ) :: Or
-        | ( ! <expr> ) :: Not
+        | ( < <expr1> <expr2> ) :: Lt
         | ( if <expr1> then <expr2> else <expr3> ) :: If
         | ( let <variable> = <expr1> in <expr2> ) :: Let
  */
@@ -387,22 +331,7 @@ Node *parseTail(std::queue<Token*> &q) {
 	}
 	Token *cur = q.front();
 	q.pop();
-	if (cur->getLiteral() == "+") { // ( + <expr1> <expr2> )
-		auto n1 = parseHead(q);
-		auto n2 = parseHead(q);
-		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
-		} else {
-			auto r = q.front();
-			q.pop();
-			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
-			}
-		}
-		return new Add(n1, n2);
-	} else if (cur->getLiteral() == "-") { // ( - <expr1> <expr2> )
+	if (cur->getLiteral() == "-") { // ( - <expr1> <expr2> )
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
@@ -447,7 +376,7 @@ Node *parseTail(std::queue<Token*> &q) {
 			}
 		}
 		return new Div(n1, n2);
-	} else if (cur->getLiteral() == "&&") { // ( && <expr1> <expr2> )
+	} else if (cur->getLiteral() == "<") { // ( < <expr1> <expr2> )
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
@@ -461,36 +390,7 @@ Node *parseTail(std::queue<Token*> &q) {
 				std::exit(EXIT_FAILURE);
 			}
 		}
-		return new And(n1, n2);
-	} else if (cur->getLiteral() == "||") { // ( || <expr1> <expr2> )
-		auto n1 = parseHead(q);
-		auto n2 = parseHead(q);
-		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
-		} else {
-			auto r = q.front();
-			q.pop();
-			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
-			}
-		}
-		return new Or(n1, n2);
-	} else if (cur->getLiteral() == "!") { // ( ! <expr> )
-		auto n = parseHead(q);
-		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
-		} else {
-			auto r = q.front();
-			q.pop();
-			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
-			}
-		}
-		return new Not(n);
+		return new Lt(n1, n2);
 	} else if (cur->getLiteral() == "if") { // ( if <expr1> then <expr2> else <expr3> )
 		auto n1 = parseHead(q);
 		if (q.empty()) {
