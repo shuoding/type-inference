@@ -493,19 +493,13 @@ Node *parseTail(std::queue<Token*> &q) {
 	}
 }
 
-struct AST {
-	AST(Node *root0) : root(root0) {}
-	~AST() { delete root; }
-	Node *root;
-};
-
-AST parse(const std::queue<Token*> &tokens) {
+Node *parse(const std::queue<Token*> &tokens) {
 	std::queue<Token*> q = tokens;
-	return AST(parseHead(q));
+	return parseHead(q);
 }
 
-void printAST(const AST &ast) {
-	std::cout << (ast.root)->getLiteral() << std::endl;
+void printAST(Node *root) {
+	std::cout << root->getLiteral() << std::endl;
 }
 
 // =========================================== type inference and type check ==========================================
@@ -556,13 +550,14 @@ int main() {
 	while (true) {
 		getline(std::cin, line);
 		auto tokens = tokenize(line);
-		auto ast = parse(tokens);
-		printAST(ast);
+		auto root = parse(tokens);
+		printAST(root);
 		while (!tokens.empty()) {
 			auto t = tokens.front();
 			delete t;
 			tokens.pop();
 		}
+		delete root;
 		/*
 		AST ast = parse(tokenize(line));
 		auto p1 = typecheck(ast);
