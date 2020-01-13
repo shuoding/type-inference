@@ -34,6 +34,22 @@
 
 */
 
+/*
+
+We only defined - * / < if, because other common operators can be easily implemented by these 5 things:
+
+(+ a b) := (- a (- 0 b))
+(&& <expr1> <expr2>) := (if <expr1> then <expr2> else false)
+(|| <expr1> <expr2>) := (if <expr1> then true else <expr2>)
+(! <expr>) := (if <expr> then false else true)
+(<= a b) := (! (< b a))
+(> a b) := (< b a)
+(>= a b) := (<= b a)
+(== a b) := (&& (! (< a b)) (! (< b a)))
+(!= a b) := (! (== a b))
+
+*/
+
 #include <iostream>
 #include <vector>
 #include <string>
