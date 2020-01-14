@@ -224,6 +224,7 @@ struct Node {
 	virtual std::string getType() { return "Node"; }
 	virtual std::string getLiteral() { return ""; }
 	virtual ~Node() {}
+	int number = -1; // the BFS index
 };
 
 struct Var : public Node {
@@ -482,7 +483,6 @@ void printAST(Node *root) {
 
 // =========================================== type inference and type check ==========================================
 
-/*
 struct UnionFind {
 	int n;
 	std::vector<int> prev;
@@ -509,10 +509,220 @@ struct UnionFind {
 	}
 };
 
-std::pair<bool, std::map<std::string, std::string>> typecheck(const AST &ast) {
+template<typename F> void dfs(Node *root, F f) {
+	f(root);
+	if (root->getType() == "Sub") {
+		auto r = dynamic_cast<Sub*>(root);
+		if (r == nullptr) {
+			die("dynamic_cast failed from Node* to Sub*");
+		}
+		dfs(r->n1, f);
+		dfs(r->n2, f);
+	} else if (root->getType() == "Mul") {
+		auto r = dynamic_cast<Mul*>(root);
+		if (r == nullptr) {
+			die("dynamic_cast failed from Node* to Mul*");
+		}
+		dfs(r->n1, f);
+		dfs(r->n2, f);
+	} else if (root->getType() == "Div") {
+		auto r = dynamic_cast<Div*>(root);
+		if (r == nullptr) {
+			die("dynamic_cast failed from Node* to Div*");
+		}
+		dfs(r->n1, f);
+		dfs(r->n2, f);
+	} else if (root->getType() == "Lt") {
+		auto r = dynamic_cast<Lt*>(root);
+		if (r == nullptr) {
+			die("dynamic_cast failed from Node* to Lt*");
+		}
+		dfs(r->n1, f);
+		dfs(r->n2, f);
+	} else if (root->getType() == "If") {
+		auto r = dynamic_cast<If*>(root);
+		if (r == nullptr) {
+			die("dynamic_cast failed from Node* to If*");
+		}
+		dfs(r->n1, f);
+		dfs(r->n2, f);
+		dfs(r->n3, f);
+	} else if (root->getType() == "Let") {
+		auto r = dynamic_cast<Let*>(root);
+		if (r == nullptr) {
+			die("dynamic_cast failed from Node* to Let*");
+		}
+		dfs(r->n1, f);
+		dfs(r->n2, f);
+		dfs(r->n3, f);
+	}
 }
 
-*/
+std::map<std::string, std::string> typecheck(Node *root) {
+	// assign numbers
+	int counter = 0;
+	std::map<std::string, int> variable_number_map;
+	auto assign_numbers = [&counter, &variable_number_map](Node *cur) -> void {
+		if (cur->getType() == "Var") {
+			auto c = dynamic_cast<Var*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to Var*");
+			}
+			if (variable_number_map.count(c->val) == 0) {
+				c->number = counter++;
+				variable_number_map[c->val] = c->number;
+			} else {
+				c->number = variable_number_map[c->val];
+			}
+		} else {
+			cur->number = counter++;
+		}
+	};
+	dfs(root, assign_numbers);
+	// generate constraints
+	// Constraints have the form x = y, where x and y are type variables or -1 representing INT or -2 representing BOOL.
+	/*
+	
+	# Type Constraints ([] represents the whole expression)
+	<variable>                               : [] = x
+	<integer>                                : [] = INT
+	<boolean>                                : [] = BOOL
+	( - <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+	( * <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+	( / <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+	( < <expr1> <expr2> )                    : [] = BOOL, [<expr1>] = INT, [<expr2>] = INT
+	( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL; [<expr2>] = [<expr3>]
+	( let <variable> = <expr1> in <expr2> )  : [] = [<expr2>], [<variable>] = [<expr1>]
+	
+	*/
+#define INT (counter)
+#define BOOL (counter + 1)
+	std::vector<std::pair<int, int>> constraints;
+	auto generate_constraints = [&counter, &constraints](Node *cur) -> void {
+		if (cur->getType() == "Var") {
+			// <variable> : [] = x
+			;
+		} else if (cur->getType() == "Int") {
+			// <integer> : [] = INT
+			constraints.push_back(std::make_pair(cur->number, INT));
+		} else if (cur->getType() == "Bool") {
+			// <boolean> : [] = BOOL
+			constraints.push_back(std::make_pair(cur->number, BOOL));
+		} else if (cur->getType() == "Sub") {
+			// ( - <expr1> <expr2> ) : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+			auto c = dynamic_cast<Sub*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to Sub*");
+			}
+			constraints.push_back(std::make_pair(c->number, INT));
+			constraints.push_back(std::make_pair(c->n1->number, INT));
+			constraints.push_back(std::make_pair(c->n2->number, INT));
+		} else if (cur->getType() == "Mul") {
+			// ( * <expr1> <expr2> ) : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+			auto c = dynamic_cast<Mul*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to Mul*");
+			}
+			constraints.push_back(std::make_pair(c->number, INT));
+			constraints.push_back(std::make_pair(c->n1->number, INT));
+			constraints.push_back(std::make_pair(c->n2->number, INT));
+		} else if (cur->getType() == "Div") {
+			// ( / <expr1> <expr2> ) : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+			auto c = dynamic_cast<Div*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to Div*");
+			}
+			constraints.push_back(std::make_pair(c->number, INT));
+			constraints.push_back(std::make_pair(c->n1->number, INT));
+			constraints.push_back(std::make_pair(c->n2->number, INT));
+		} else if (cur->getType() == "Lt") {
+			// ( < <expr1> <expr2> ) : [] = BOOL, [<expr1>] = INT, [<expr2>] = INT
+			auto c = dynamic_cast<Lt*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to Lt*");
+			}
+			constraints.push_back(std::make_pair(c->number, BOOL));
+			constraints.push_back(std::make_pair(c->n1->number, INT));
+			constraints.push_back(std::make_pair(c->n2->number, INT));
+		} else if (cur->getType() == "If") {
+			// ( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL; [<expr2>] = [<expr3>]
+			auto c = dynamic_cast<If*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to If*");
+			}
+			constraints.push_back(std::make_pair(c->number, c->n2->number));
+			constraints.push_back(std::make_pair(c->n1->number, BOOL));
+			constraints.push_back(std::make_pair(c->n2->number, c->n3->number));
+		} else if (cur->getType() == "Let") {
+			// ( let <variable> = <expr1> in <expr2> ) : [] = [<expr2>], [<variable>] = [<expr1>]
+			auto c = dynamic_cast<Let*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to Let*");
+			}
+			constraints.push_back(std::make_pair(c->number, c->n3->number));
+			constraints.push_back(std::make_pair(c->n1->number, c->n2->number));
+		} else {
+			die("Unknown AST node type!");
+		}
+	};
+	dfs(root, generate_constraints);
+
+	// a helper function
+	auto is_type_variable = [&counter](int x) -> bool {
+		// 0, 1, ..., counter - 1 are type variables.
+		// counter is INT.
+		// counter + 1 is BOOL.
+		return x < counter;
+	};
+
+	// solve constraints
+	UnionFind uf(counter + 2);
+	for (auto p : constraints) {
+		int x = p.first;
+		int y = p.second;
+		int rx = uf.find(x);
+		int ry = uf.find(y);
+		if (is_type_variable(rx) && is_type_variable(ry)) {
+			uf.join(rx, ry);
+		} else if (is_type_variable(rx)) { // always choose the proper type as the root
+			uf.join(rx, ry);
+		} else if (is_type_variable(ry)) { // always choose the proper type as the root
+			uf.join(ry, rx);
+		} else {
+			if (rx == ry) {
+				uf.join(rx, ry);
+			} else {
+				std::string t_rx = (rx == INT) ? "INT" : "BOOL";
+				std::string t_ry = (ry == INT) ? "INT" : "BOOL";
+				die("type error: cannot unify " + t_rx + " and " + t_ry);
+			}
+		}
+	}
+
+	// construct variable-type map
+	std::map<std::string, std::string> ret;
+	auto add_var = [&counter, &ret, &uf](Node *cur) -> void {
+		if (cur->getType() == "Var") {
+			auto c = dynamic_cast<Var*>(cur);
+			if (c == nullptr) {
+				die("dynamic_cast failed from Node* to Var*");
+			}
+			std::string t;
+			if (uf.find(c->number) == INT) {
+				t = "INT";
+			} else if (uf.find(c->number) == BOOL) {
+				t = "BOOL";
+			} else {
+				t = "GENERICS-" + std::to_string(uf.find(c->number));
+			}
+			ret[c->val] = t;
+		}
+	};
+	dfs(root, add_var);
+	return ret;
+#undef INT
+#undef BOOL
+}
 
 // ============================================== evaluation ==========================================
 
@@ -529,11 +739,15 @@ int main() {
 		getline(std::cin, line);
 		auto tokens = tokenize(line);
 		auto root = parse(tokens);
-		printAST(root);
+		// printAST(root);
 		while (!tokens.empty()) {
 			auto t = tokens.front();
 			delete t;
 			tokens.pop();
+		}
+		auto var_type_map = typecheck(root);
+		for (auto p : var_type_map) {
+			std::cout << p.first << " :: " << p.second << std::endl;
 		}
 		delete root;
 		/*
