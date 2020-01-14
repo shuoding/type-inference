@@ -60,6 +60,11 @@ We only defined - * / < if, because other common operators can be easily impleme
 #include <cstdlib>
 #include <queue>
 
+void die(const std::string &s) {
+	std::cerr << s << std::endl;
+	std::exit(EXIT_FAILURE);
+}
+
 // ================================================== tokenizing =================================================
 
 struct Token {
@@ -192,8 +197,7 @@ std::queue<Token*> tokenize(const std::string &source) {
 					num.push_back(source[i++]);
 				}
 				if (num.size() == 0) {
-					std::cerr << "unrecognized character: " << source[i] << std::endl;
-					std::exit(EXIT_FAILURE);
+					die(std::string("unrecognized character: ") + source[i]);
 				} else {
 					ret.push(new I(std::stoi(num)));
 				}
@@ -312,8 +316,7 @@ Node *parseTail(std::queue<Token*> &q);
 
 Node *parseHead(std::queue<Token*> &q) {
 	if (q.empty()) {
-		std::cerr << "syntax error: <expr> cannot be empty" << std::endl;
-		std::exit(EXIT_FAILURE);
+		die("syntax error: <expr> cannot be empty");
 	}
 	Token *cur = q.front();
 	q.pop();
@@ -331,19 +334,16 @@ Node *parseHead(std::queue<Token*> &q) {
 		if (cur->getLiteral() == "(") {
 			return parseTail(q);
 		} else {
-			std::cerr << "syntax error: <expr> cannot start with token " << cur->getLiteral() << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: <expr> cannot start with token " + cur->getLiteral());
 		}
 	} else {
-		std::cerr << "syntax error: <expr> cannot start with token type" << cur->getType() << std::endl;
-		std::exit(EXIT_FAILURE);
+		die("syntax error: <expr> cannot start with token type" + cur->getType());
 	}
 }
 
 Node *parseTail(std::queue<Token*> &q) {
 	if (q.empty()) {
-		std::cerr << "syntax error: <expr> cannot be (" << std::endl;
-		std::exit(EXIT_FAILURE);
+		die("syntax error: <expr> cannot be (");
 	}
 	Token *cur = q.front();
 	q.pop();
@@ -351,14 +351,12 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing )");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing )");
 			}
 		}
 		return new Sub(n1, n2);
@@ -366,14 +364,12 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing )");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing )");
 			}
 		}
 		return new Mul(n1, n2);
@@ -381,14 +377,12 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing )");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing )");
 			}
 		}
 		return new Div(n1, n2);
@@ -396,100 +390,84 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing )");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing )");
 			}
 		}
 		return new Lt(n1, n2);
 	} else if (cur->getLiteral() == "if") { // ( if <expr1> then <expr2> else <expr3> )
 		auto n1 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing 'then'" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing 'then'");
 		} else {
 			auto t = q.front();
 			q.pop();
 			if (t->getLiteral() != "then") {
-				std::cerr << "syntax error: missing 'then'" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing 'then'");
 			}
 		}
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing 'else'" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing 'else'");
 		} else {
 			auto t = q.front();
 			q.pop();
 			if (t->getLiteral() != "else") {
-				std::cerr << "syntax error: missing 'else'" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing 'else'");
 			}
 		}
 		auto n3 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing )");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing )");
 			}
 		}
 		return new If(n1, n2, n3);
 	} else if (cur->getLiteral() == "let") { // ( let <variable> = <expr1> in <expr2> )
 		auto n1 = parseHead(q);
 		if (n1->getType() != "Var") {
-			std::cerr << "syntax error: A variable must follow 'let'." << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: A variable must follow 'let'.");
 		}
 		if (q.empty()) {
-			std::cerr << "syntax error: missing =" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing =");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != "=") {
-				std::cerr << "syntax error: missing =" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing =");
 			}
 		}
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing 'in'" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing 'in'");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != "in") {
-				std::cerr << "syntax error: missing 'in'" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing 'in'");
 			}
 		}
 		auto n3 = parseHead(q);
 		if (q.empty()) {
-			std::cerr << "syntax error: missing )" << std::endl;
-			std::exit(EXIT_FAILURE);
+			die("syntax error: missing )");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				std::cerr << "syntax error: missing )" << std::endl;
-				std::exit(EXIT_FAILURE);
+				die("syntax error: missing )");
 			}
 		}
 		return new Let(n1, n2, n3);
 	} else {
-		std::cerr << "syntax error: <expr> cannot start with ( " << cur->getLiteral() << std::endl;
-		std::exit(EXIT_FAILURE);
+		die("syntax error: <expr> cannot start with ( " + cur->getLiteral());
 	}
 }
 
