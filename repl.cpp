@@ -69,40 +69,68 @@ void die(const std::string &s) {
 
 struct Token {
 	Token() {}
-	virtual std::string getType() { return "Token"; }
-	virtual std::string getLiteral() { return ""; }
+	virtual std::string getType() {
+		return "Token";
+	}
+	virtual std::string getLiteral() {
+		return "";
+	}
 	virtual ~Token() {}
 };
 
 struct N : public Token { // Variable Name
 	N(const std::string &val0) : val(val0) {}
-	std::string getType() override { return "N"; }
-	std::string getLiteral() override { return val; }
+	std::string getType() override {
+		return "N";
+	}
+	std::string getLiteral() override {
+		return val;
+	}
 	~N() override {}
+
 	std::string val;
 };
 
 struct B : public Token { // Boolean Literal
 	B(bool val0) : val(val0) {}
-	std::string getType() override { return "B"; }
-	std::string getLiteral() override { if (val) return "true"; else return "false"; }
+	std::string getType() override {
+		return "B";
+	}
+	std::string getLiteral() override {
+		if (val) {
+			return "true";
+		} else {
+			return "false";
+		}
+	}
 	~B() override {}
+
 	bool val;
 };
 
 struct I : public Token { // Integer Literal
 	I(int val0) : val(val0) {}
-	std::string getType() override { return "I"; }
-	std::string getLiteral() override { return std::to_string(val); }
+	std::string getType() override {
+		return "I";
+	}
+	std::string getLiteral() override {
+		return std::to_string(val);
+	}
 	~I() override {}
+
 	int val;
 };
 
 struct K : public Token { // Reserved Keyword
 	K(const std::string &val0) : val(val0) {}
-	std::string getType() override { return "K"; }
-	std::string getLiteral() override { return val; }
+	std::string getType() override {
+		return "K";
+	}
+	std::string getLiteral() override {
+		return val;
+	}
 	~K() override {}
+
 	std::string val;
 };
 
@@ -115,11 +143,17 @@ reserved keywords: ( ) - * / < if then else let = in
 
 */
 
-bool isa(char ch) { return std::isalpha(static_cast<unsigned char>(ch)); }
+bool isa(char ch) {
+	return std::isalpha(static_cast<unsigned char>(ch));
+}
 
-bool isd(char ch) { return std::isdigit(static_cast<unsigned char>(ch)); }
+bool isd(char ch) {
+	return std::isdigit(static_cast<unsigned char>(ch));
+}
 
-bool iss(char ch) { return std::isspace(static_cast<unsigned char>(ch)); }
+bool iss(char ch) {
+	return std::isspace(static_cast<unsigned char>(ch));
+}
 
 std::queue<Token*> tokenize(const std::string &source) {
 	std::queue<Token*> ret;
@@ -221,81 +255,151 @@ void printTokens(const std::queue<Token*> &tokens) {
 
 struct Node {
 	Node() {}
-	virtual std::string getType() { return "Node"; }
-	virtual std::string getLiteral() { return ""; }
+	virtual std::string getType() {
+		return "Node";
+	}
+	virtual std::string getLiteral() {
+		return "";
+	}
 	virtual ~Node() {}
+
 	int number = -1; // the BFS index
 };
 
 struct Var : public Node {
 	Var(const std::string &val0) : val(val0) {}
-	std::string getType() override { return "Var"; }
-	std::string getLiteral() override { return "[Var " + val + "]"; }
+	std::string getType() override {
+		return "Var";
+	}
+	std::string getLiteral() override {
+		return "[Var " + val + "]";
+	}
 	~Var() override {}
+
 	std::string val;
 };
 
 struct Int : public Node {
 	Int(int val0) : val(val0) {}
-	std::string getType() override { return "Int"; }
-	std::string getLiteral() override { return "[Int " + std::to_string(val) + "]"; }
+	std::string getType() override {
+		return "Int";
+	}
+	std::string getLiteral() override {
+		return "[Int " + std::to_string(val) + "]";
+	}
 	~Int() override {}
+
 	int val;
 };
 
 struct Bool : public Node {
 	Bool(bool val0) : val(val0) {}
-	std::string getType() override { return "Bool"; }
-	std::string getLiteral() override { return "[Bool " + std::string(val ? "true" : "false") + "]"; }
+	std::string getType() override {
+		return "Bool";
+	}
+	std::string getLiteral() override {
+		return "[Bool " + std::string(val ? "true" : "false") + "]";
+	}
 	~Bool() override {}
+
 	bool val;
 };
 
 struct Sub : public Node {
 	Sub(Node *n10, Node *n20) : n1(n10), n2(n20) {}
-	std::string getType() override { return "Sub"; }
-	std::string getLiteral() override { return "[Sub " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
-	~Sub() override { delete n1; delete n2; }
+	std::string getType() override {
+		return "Sub";
+	}
+	std::string getLiteral() override {
+		return "[Sub " + n1->getLiteral() + " " + n2->getLiteral() + "]";
+	}
+	~Sub() override {
+		delete n1;
+		delete n2;
+	}
+
 	Node *n1, *n2;
 };
 
 struct Mul : public Node {
 	Mul(Node *n10, Node *n20) : n1(n10), n2(n20) {}
-	std::string getType() override { return "Mul"; }
-	std::string getLiteral() override { return "[Mul " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
-	~Mul() override { delete n1; delete n2; }
+	std::string getType() override {
+		return "Mul";
+	}
+	std::string getLiteral() override {
+		return "[Mul " + n1->getLiteral() + " " + n2->getLiteral() + "]";
+	}
+	~Mul() override {
+		delete n1;
+		delete n2;
+	}
+
 	Node *n1, *n2;
 };
 
 struct Div : public Node {
 	Div(Node *n10, Node *n20) : n1(n10), n2(n20) {}
-	std::string getType() override { return "Div"; }
-	std::string getLiteral() override { return "[Div " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
-	~Div() override { delete n1; delete n2; }
+	std::string getType() override {
+		return "Div";
+	}
+	std::string getLiteral() override {
+		return "[Div " + n1->getLiteral() + " " + n2->getLiteral() + "]";
+	}
+	~Div() override {
+		delete n1;
+		delete n2;
+	}
+
 	Node *n1, *n2;
 };
 
 struct Lt : public Node {
 	Lt(Node *n10, Node *n20) : n1(n10), n2(n20) {}
-	std::string getType() override { return "Lt"; }
-	std::string getLiteral() override { return "[Lt " + n1->getLiteral() + " " + n2->getLiteral() + "]"; }
-	~Lt() override { delete n1; delete n2; }
+	std::string getType() override {
+		return "Lt";
+	}
+	std::string getLiteral() override {
+		return "[Lt " + n1->getLiteral() + " " + n2->getLiteral() + "]";
+	}
+	~Lt() override {
+		delete n1;
+		delete n2;
+	}
+
 	Node *n1, *n2;
 };
 
 struct If : public Node {
 	If(Node *n10, Node *n20, Node *n30) : n1(n10), n2(n20), n3(n30) {}
-	std::string getType() override { return "If"; }
-	std::string getLiteral() override { return "[If " + n1->getLiteral() + " " + n2->getLiteral() + " " + n3->getLiteral() + "]"; }
-	~If() override { delete n1; delete n2; delete n3; }
+	std::string getType() override {
+		return "If";
+	}
+	std::string getLiteral() override {
+		return "[If " + n1->getLiteral() + " " + n2->getLiteral() + " " + n3->getLiteral() + "]";
+	}
+	~If() override {
+		delete n1;
+		delete n2;
+		delete n3;
+	}
+
 	Node *n1, *n2, *n3;
 };
 
 struct Let : public Node {
 	Let(Node *n10, Node *n20, Node *n30) : n1(n10), n2(n20), n3(n30) {}
-	std::string getType() override { return "Let"; }
-	std::string getLiteral() override { return "[Let " + n1->getLiteral() + " " + n2->getLiteral() + " " + n3->getLiteral() + "]"; }
-	~Let() override { delete n1; delete n2; delete n3; }
+	std::string getType() override {
+		return "Let";
+	}
+	std::string getLiteral() override {
+		return "[Let " + n1->getLiteral() + " " + n2->getLiteral() + " " + n3->getLiteral() + "]";
+	}
+	~Let() override {
+		delete n1;
+		delete n2;
+		delete n3;
+	}
+
 	Node *n1, *n2, *n3;
 };
 
@@ -724,15 +828,6 @@ std::map<std::string, std::string> typecheck(Node *root) {
 #undef BOOL
 }
 
-// ============================================== evaluation ==========================================
-
-/*
-
-std::pair<std::string, std::pair<bool, int>> eval(const AST &ast) {
-}
-
-*/
-
 int main() {
 	std::string line;
 	while (true) {
@@ -750,23 +845,5 @@ int main() {
 			std::cout << p.first << " :: " << p.second << std::endl;
 		}
 		delete root;
-		/*
-		AST ast = parse(tokenize(line));
-		auto p1 = typecheck(ast);
-		if (p1.first) {
-			auto typeMap = p1.second;
-			for (auto p2 : typeMap) {
-				std::cout << p2.first << " :: " << p2.second << std::endl;
-			}
-			auto p3 = eval(ast);
-			if (p3.first == "BOOL") {
-				std::cout << "Got BOOL value: " << p3.second.first << std::endl;
-			} else {
-				std::cout << "Got INT value: " << p3.second.second << std::endl;
-			}
-		} else {
-			std::cerr << "Typecheck failed!" << std::endl;
-		}
-		*/
 	}
 }
