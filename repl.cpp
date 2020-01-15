@@ -42,6 +42,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 #include <utility>
 #include <memory>
 #include <cctype>
@@ -666,6 +667,27 @@ template<typename F> void dfs(Node *root, F f) {
 
 // This function does both type inference and type check.
 std::map<std::string, std::string> typecheck(Node *root) {
+	// duplicate variable name check
+	std::set<std::string> variable_names;
+	auto check_duplicate_variables = [&variable_names](Node *cur) -> void {
+		if (cur->getType() == "Let") {
+			auto c = dynamic_cast<Let*>(cur);
+			if (c == nullptr) {
+				die("Internal Error: dynamic_cast failed from Node* to Let*");
+			}
+			auto v = dynamic_cast<Var*>(c->n1);
+			if (v == nullptr) {
+				die("Internal Error: dynamic_cast failed from Node* to Var*");
+			}
+			if (variable_names.count(v->val) == 0) {
+				variable_names.insert(v->val);
+			} else {
+				die("Variable Error: Duplicate variable names are not supported.");
+			}
+		}
+	};
+	dfs(root, check_duplicate_variables);
+
 	// assign numbers to AST nodes
 	int counter = 0;
 	std::map<std::string, int> variable_number_map;
