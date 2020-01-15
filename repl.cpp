@@ -11,7 +11,7 @@
  *         | ( < <expr1> <expr2> )
  *         | ( if <expr1> then <expr2> else <expr3> )
  *         | ( let <variable> = <expr1> in <expr2> )
- * 
+ *
  * # Type Constraints ([] represents the whole expression)
  * <variable>                               :
  * <integer>                                : [] = INT
@@ -752,7 +752,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			constraints.push_back(std::make_pair(c->n1->number, INT));
 			constraints.push_back(std::make_pair(c->n2->number, INT));
 		} else if (cur->getType() == "If") {
-			// ( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL; [<expr2>] = [<expr3>]
+			// ( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL, [<expr2>] = [<expr3>]
 			auto c = dynamic_cast<If*>(cur);
 			if (c == nullptr) {
 				die("Internal Error: dynamic_cast failed from Node* to If*");

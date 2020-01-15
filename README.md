@@ -1,6 +1,11 @@
 # type-inference
 This repository contains a very simple example of static type inference and static type check.
 
+## Compilation (requiring g++ (C++11) and make)
+```
+make
+```
+
 ## Examples
 ```
 ...> (let x = 1 in x)
