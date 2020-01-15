@@ -1,54 +1,42 @@
 /*
-
-# Grammar (LL1)
-<expr> := <variable> # any non-empty alphabetic sequences except for boolean literals and keywords
-        | <integer>
-        | <boolean>
-        | ( - <expr1> <expr2> )
-        | ( * <expr1> <expr2> )
-        | ( / <expr1> <expr2> )
-        | ( < <expr1> <expr2> )
-        | ( if <expr1> then <expr2> else <expr3> )
-        | ( let <variable> = <expr1> in <expr2> )
-
-# Base Values
-<integer> := 0 | 1 | -1 | ... # - 1 is invalid.
-<boolean> := true | false
-
-# Type Variables
-[<variable>]
-[<integer>]
-[<boolean>]
-[<expr>]
-
-# Type Constraints ([] represents the whole expression)
-<variable>                               : [] = x
-<integer>                                : [] = INT
-<boolean>                                : [] = BOOL
-( - <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = INT
-( * <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = INT
-( / <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = INT
-( < <expr1> <expr2> )                    : [<expr1>] = [<expr2>] = INT, [] = BOOL
-( if <expr1> then <expr2> else <expr3> ) : [<expr1>] = BOOL; [<expr2>] = [<expr3>], [] = [<expr2>]
-( let <variable> = <expr1> in <expr2> )  : [<variable>] = [<expr1>], [] = [<expr2>]
-
-*/
+ * # Grammar (LL1)
+ * <expr> := <variable> # any non-empty alphabetic sequences except for boolean literals and keywords
+ *                      # duplicate variable names are not supported
+ *         | <integer> # 0 | 1 | -1 | ...
+ *                     # - 1 is invalid. The digits must immediately follow the negative sign.
+ *         | <boolean> # true | false
+ *         | ( - <expr1> <expr2> )
+ *         | ( * <expr1> <expr2> )
+ *         | ( / <expr1> <expr2> )
+ *         | ( < <expr1> <expr2> )
+ *         | ( if <expr1> then <expr2> else <expr3> )
+ *         | ( let <variable> = <expr1> in <expr2> )
+ * 
+ * # Type Constraints ([] represents the whole expression)
+ * <variable>                               :
+ * <integer>                                : [] = INT
+ * <boolean>                                : [] = BOOL
+ * ( - <expr1> <expr2> )                    : [] = INT, [<expr1>] = [<expr2>] = INT
+ * ( * <expr1> <expr2> )                    : [] = INT, [<expr1>] = [<expr2>] = INT
+ * ( / <expr1> <expr2> )                    : [] = INT, [<expr1>] = [<expr2>] = INT
+ * ( < <expr1> <expr2> )                    : [] = BOOL, [<expr1>] = [<expr2>] = INT
+ * ( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL, [<expr2>] = [<expr3>]
+ * ( let <variable> = <expr1> in <expr2> )  : [] = [<expr2>], [<variable>] = [<expr1>]
+ */
 
 /*
-
-We only defined - * / < if, because other common operators can be easily implemented by these 5 things:
-
-(+ a b) := (- a (- 0 b))
-(&& <expr1> <expr2>) := (if <expr1> then <expr2> else false)
-(|| <expr1> <expr2>) := (if <expr1> then true else <expr2>)
-(! <expr>) := (if <expr> then false else true)
-(<= a b) := (! (< b a))
-(> a b) := (< b a)
-(>= a b) := (<= b a)
-(== a b) := (&& (! (< a b)) (! (< b a)))
-(!= a b) := (! (== a b))
-
-*/
+ * Other common operators can be easily implemented:
+ * (+ a b) := (- a (- 0 b))
+ * (&& <expr1> <expr2>) := (if <expr1> then <expr2> else false)
+ * (|| <expr1> <expr2>) := (if <expr1> then true else <expr2>)
+ * (! <expr>) := (if <expr> then false else true)
+ * (<= a b) := (! (< b a))
+ * (> a b) := (< b a)
+ * (>= a b) := (<= b a)
+ * (== a b) := (&& (! (< a b)) (! (< b a)))
+ * (!= a b) := (! (== a b))
+ * ...
+ */
 
 #include <iostream>
 #include <vector>
@@ -60,6 +48,7 @@ We only defined - * / < if, because other common operators can be easily impleme
 #include <cstdlib>
 #include <queue>
 
+// print an error message and quit
 void die(const std::string &s) {
 	std::cerr << s << std::endl;
 	std::exit(EXIT_FAILURE);
@@ -78,7 +67,8 @@ struct Token {
 	virtual ~Token() {}
 };
 
-struct N : public Token { // Variable Name
+// variable name
+struct N : public Token {
 	N(const std::string &val0) : val(val0) {}
 	std::string getType() override {
 		return "N";
@@ -91,7 +81,22 @@ struct N : public Token { // Variable Name
 	std::string val;
 };
 
-struct B : public Token { // Boolean Literal
+// integer literal
+struct I : public Token {
+	I(int val0) : val(val0) {}
+	std::string getType() override {
+		return "I";
+	}
+	std::string getLiteral() override {
+		return std::to_string(val);
+	}
+	~I() override {}
+
+	int val;
+};
+
+// boolean literal
+struct B : public Token {
 	B(bool val0) : val(val0) {}
 	std::string getType() override {
 		return "B";
@@ -108,20 +113,8 @@ struct B : public Token { // Boolean Literal
 	bool val;
 };
 
-struct I : public Token { // Integer Literal
-	I(int val0) : val(val0) {}
-	std::string getType() override {
-		return "I";
-	}
-	std::string getLiteral() override {
-		return std::to_string(val);
-	}
-	~I() override {}
-
-	int val;
-};
-
-struct K : public Token { // Reserved Keyword
+// reserved token
+struct K : public Token {
 	K(const std::string &val0) : val(val0) {}
 	std::string getType() override {
 		return "K";
@@ -135,22 +128,23 @@ struct K : public Token { // Reserved Keyword
 };
 
 /*
+ * variable names: [a-zA-Z]+
+ * boolean literal: true | false
+ * integer literal: -?[0-9]+
+ * reserved tokens: ( ) - * / < if then else let = in
+ */
 
-variable names: [a-zA-Z]+
-boolean literal: true false
-integer literal: -?[0-9]+
-reserved keywords: ( ) - * / < if then else let = in
-
-*/
-
+// is alphabetic or not
 bool isa(char ch) {
 	return std::isalpha(static_cast<unsigned char>(ch));
 }
 
+// is digit or not
 bool isd(char ch) {
 	return std::isdigit(static_cast<unsigned char>(ch));
 }
 
+// is whitespace or not
 bool iss(char ch) {
 	return std::isspace(static_cast<unsigned char>(ch));
 }
@@ -183,7 +177,7 @@ std::queue<Token*> tokenize(const std::string &source) {
 				ret.push(new K("let"));
 			} else if (word == "in") {
 				ret.push(new K("in"));
-			} else {
+			} else { // Actually, several previous branches can be merged to this one.
 				ret.push(new N(word));
 			}
 		} else { // starting with other characters
@@ -196,7 +190,7 @@ std::queue<Token*> tokenize(const std::string &source) {
 				ret.push(new K(")"));
 				i++;
 				break;
-			case '-': // operator or negative sign
+			case '-': // the subtraction operator or the negative sign
 				if (i + 1 < n && isd(source[i + 1])) {
 					i++;
 					std::string num = "-";
@@ -225,13 +219,16 @@ std::queue<Token*> tokenize(const std::string &source) {
 				ret.push(new K("="));
 				i++;
 				break;
-			default: // nonnegative digits
+			default: // nonnegative digits or other characters
 				std::string num;
 				while (isd(source[i])) {
 					num.push_back(source[i++]);
 				}
-				if (num.size() == 0) {
-					die(std::string("unrecognized character: ") + source[i]);
+				if (num.size() == 0) { // other characters
+					die(std::string("Token Error: unrecognized character '")
+						+ source[i]
+						+ std::string("' at position ")
+						+ std::to_string(i));
 				} else {
 					ret.push(new I(std::stoi(num)));
 				}
@@ -245,7 +242,7 @@ std::queue<Token*> tokenize(const std::string &source) {
 void printTokens(const std::queue<Token*> &tokens) {
 	std::queue<Token*> ts = tokens;
 	while (!ts.empty()) {
-		auto t  = ts.front();
+		auto t = ts.front();
 		std::cout << t->getLiteral() << std::endl;
 		ts.pop();
 	}
@@ -263,7 +260,8 @@ struct Node {
 	}
 	virtual ~Node() {}
 
-	int number = -1; // the BFS index
+	// the pre-order BFS number
+	int number = -1;
 };
 
 struct Var : public Node {
@@ -404,51 +402,53 @@ struct Let : public Node {
 };
 
 /*
-
-<expr> := <variable> # any non-empty alphabetic sequences except for boolean literals and keywords :: Var
-        | <integer> :: Int
-        | <boolean> :: Bool
-        | ( - <expr1> <expr2> ) :: Sub
-        | ( * <expr1> <expr2> ) :: Mul
-        | ( / <expr1> <expr2> ) :: Div
-        | ( < <expr1> <expr2> ) :: Lt
-        | ( if <expr1> then <expr2> else <expr3> ) :: If
-        | ( let <variable> = <expr1> in <expr2> ) :: Let
+ * <expr> := <variable> # any non-empty alphabetic sequences except for boolean literals and keywords
+ *                      # duplicate variable names are not supported
+ *         | <integer> # 0 | 1 | -1 | ...
+ *                     # - 1 is invalid. The digits must immediately follow the negative sign.
+ *         | <boolean> # true | false
+ *         | ( - <expr1> <expr2> )
+ *         | ( * <expr1> <expr2> )
+ *         | ( / <expr1> <expr2> )
+ *         | ( < <expr1> <expr2> )
+ *         | ( if <expr1> then <expr2> else <expr3> )
+ *         | ( let <variable> = <expr1> in <expr2> )
  */
 
+// mutually recursive functions
 Node *parseHead(std::queue<Token*> &q);
 Node *parseTail(std::queue<Token*> &q);
 
 Node *parseHead(std::queue<Token*> &q) {
 	if (q.empty()) {
-		die("syntax error: <expr> cannot be empty");
+		die("Syntax Error: Expressions and subexpressions cannot be empty.");
 	}
 	Token *cur = q.front();
 	q.pop();
-	if (cur->getType() == "N") { // Var
+	if (cur->getType() == "N") { // <variable>
 		return new Var(cur->getLiteral());
-	} else if (cur->getType() == "I") { // Int
+	} else if (cur->getType() == "I") { // <integer>
 		return new Int(std::stoi(cur->getLiteral()));
-	} else if (cur->getType() == "B") { // Bool
+	} else if (cur->getType() == "B") { // <boolean>
 		if (cur->getLiteral() == "true") {
 			return new Bool(true);
 		} else {
 			return new Bool(false);
 		}
-	} else if (cur->getType() == "K") { // (
+	} else if (cur->getType() == "K") { // left parenthesis (
 		if (cur->getLiteral() == "(") {
 			return parseTail(q);
 		} else {
-			die("syntax error: <expr> cannot start with token " + cur->getLiteral());
+			die("Syntax Error: Expressions and subexpressions cannot start with token " + cur->getLiteral());
 		}
-	} else {
-		die("syntax error: <expr> cannot start with token type" + cur->getType());
+	} else { // This branch is for the Token type.
+		die("Syntax Error: Expressions and subexpressions cannot start with token type " + cur->getType());
 	}
 }
 
 Node *parseTail(std::queue<Token*> &q) {
 	if (q.empty()) {
-		die("syntax error: <expr> cannot be (");
+		die("Syntax Error: Expressions and subexpressions cannot be (.");
 	}
 	Token *cur = q.front();
 	q.pop();
@@ -456,12 +456,12 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing )");
+			die("Syntax Error: missing ) in (- <expr1> <expr2>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				die("syntax error: missing )");
+				die("Syntax Error: missing ) in (- <expr1> <expr2>)");
 			}
 		}
 		return new Sub(n1, n2);
@@ -469,12 +469,12 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing )");
+			die("Syntax Error: missing ) in (* <expr1> <expr2>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				die("syntax error: missing )");
+				die("Syntax Error: missing ) in (* <expr1> <expr2>)");
 			}
 		}
 		return new Mul(n1, n2);
@@ -482,12 +482,12 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing )");
+			die("Syntax Error: missing ) in (/ <expr1> <expr2>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				die("syntax error: missing )");
+				die("Syntax Error: missing ) in (/ <expr1> <expr2>)");
 			}
 		}
 		return new Div(n1, n2);
@@ -495,84 +495,84 @@ Node *parseTail(std::queue<Token*> &q) {
 		auto n1 = parseHead(q);
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing )");
+			die("Syntax Error: missing ) in (< <expr1> <expr2>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				die("syntax error: missing )");
+				die("Syntax Error: missing ) in (< <expr1> <expr2>)");
 			}
 		}
 		return new Lt(n1, n2);
 	} else if (cur->getLiteral() == "if") { // ( if <expr1> then <expr2> else <expr3> )
 		auto n1 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing 'then'");
+			die("Syntax Error: missing 'then' in (if <expr1> then <expr2> else <expr3>)");
 		} else {
 			auto t = q.front();
 			q.pop();
 			if (t->getLiteral() != "then") {
-				die("syntax error: missing 'then'");
+				die("Syntax Error: missing 'then' in (if <expr1> then <expr2> else <expr3>)");
 			}
 		}
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing 'else'");
+			die("Syntax Error: missing 'else' in (if <expr1> then <expr2> else <expr3>)");
 		} else {
 			auto t = q.front();
 			q.pop();
 			if (t->getLiteral() != "else") {
-				die("syntax error: missing 'else'");
+				die("Syntax Error: missing 'else' in (if <expr1> then <expr2> else <expr3>)");
 			}
 		}
 		auto n3 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing )");
+			die("Syntax Error: missing ) in (if <expr1> then <expr2> else <expr3>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				die("syntax error: missing )");
+				die("Syntax Error: missing ) in (if <expr1> then <expr2> else <expr3>)");
 			}
 		}
 		return new If(n1, n2, n3);
 	} else if (cur->getLiteral() == "let") { // ( let <variable> = <expr1> in <expr2> )
 		auto n1 = parseHead(q);
 		if (n1->getType() != "Var") {
-			die("syntax error: A variable must follow 'let'.");
+			die("Syntax Error: The token following 'let' must be a variable.");
 		}
 		if (q.empty()) {
-			die("syntax error: missing =");
+			die("Syntax Error: missing = in (let <variable> = <expr1> in <expr2>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != "=") {
-				die("syntax error: missing =");
+				die("Syntax Error: missing = in (let <variable> = <expr1> in <expr2>)");
 			}
 		}
 		auto n2 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing 'in'");
+			die("Syntax Error: missing 'in' in (let <variable> = <expr1> in <expr2>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != "in") {
-				die("syntax error: missing 'in'");
+				die("Syntax Error: missing 'in' in (let <variable> = <expr1> in <expr2>)");
 			}
 		}
 		auto n3 = parseHead(q);
 		if (q.empty()) {
-			die("syntax error: missing )");
+			die("Syntax Error: missing ) in (let <variable> = <expr1> in <expr2>)");
 		} else {
 			auto r = q.front();
 			q.pop();
 			if (r->getLiteral() != ")") {
-				die("syntax error: missing )");
+				die("Syntax Error: missing ) in (let <variable> = <expr1> in <expr2>)");
 			}
 		}
 		return new Let(n1, n2, n3);
 	} else {
-		die("syntax error: <expr> cannot start with ( " + cur->getLiteral());
+		die("Syntax Error: Expressions and subexpressions cannot start with ( and " + cur->getLiteral());
 	}
 }
 
@@ -588,8 +588,6 @@ void printAST(Node *root) {
 // =========================================== type inference and type check ==========================================
 
 struct UnionFind {
-	int n;
-	std::vector<int> prev;
 	UnionFind(int n0) : n(n0) {
 		for (int i = 0; i < n0; i++) {
 			prev.push_back(i);
@@ -611,42 +609,46 @@ struct UnionFind {
 	void join(int x, int y) { // The second argument serves as the root.
 		prev[find(x)] = find(y);
 	}
+
+	int n;
+	std::vector<int> prev;
 };
 
+// This is a general function for traversing the AST and applying f to each node.
 template<typename F> void dfs(Node *root, F f) {
 	f(root);
 	if (root->getType() == "Sub") {
 		auto r = dynamic_cast<Sub*>(root);
 		if (r == nullptr) {
-			die("dynamic_cast failed from Node* to Sub*");
+			die("Internal Error: dynamic_cast failed from Node* to Sub*");
 		}
 		dfs(r->n1, f);
 		dfs(r->n2, f);
 	} else if (root->getType() == "Mul") {
 		auto r = dynamic_cast<Mul*>(root);
 		if (r == nullptr) {
-			die("dynamic_cast failed from Node* to Mul*");
+			die("Internal Error: dynamic_cast failed from Node* to Mul*");
 		}
 		dfs(r->n1, f);
 		dfs(r->n2, f);
 	} else if (root->getType() == "Div") {
 		auto r = dynamic_cast<Div*>(root);
 		if (r == nullptr) {
-			die("dynamic_cast failed from Node* to Div*");
+			die("Internal Error: dynamic_cast failed from Node* to Div*");
 		}
 		dfs(r->n1, f);
 		dfs(r->n2, f);
 	} else if (root->getType() == "Lt") {
 		auto r = dynamic_cast<Lt*>(root);
 		if (r == nullptr) {
-			die("dynamic_cast failed from Node* to Lt*");
+			die("Internal Error: dynamic_cast failed from Node* to Lt*");
 		}
 		dfs(r->n1, f);
 		dfs(r->n2, f);
 	} else if (root->getType() == "If") {
 		auto r = dynamic_cast<If*>(root);
 		if (r == nullptr) {
-			die("dynamic_cast failed from Node* to If*");
+			die("Internal Error: dynamic_cast failed from Node* to If*");
 		}
 		dfs(r->n1, f);
 		dfs(r->n2, f);
@@ -654,7 +656,7 @@ template<typename F> void dfs(Node *root, F f) {
 	} else if (root->getType() == "Let") {
 		auto r = dynamic_cast<Let*>(root);
 		if (r == nullptr) {
-			die("dynamic_cast failed from Node* to Let*");
+			die("Internal Error: dynamic_cast failed from Node* to Let*");
 		}
 		dfs(r->n1, f);
 		dfs(r->n2, f);
@@ -662,15 +664,16 @@ template<typename F> void dfs(Node *root, F f) {
 	}
 }
 
+// This function does both type inference and type check.
 std::map<std::string, std::string> typecheck(Node *root) {
-	// assign numbers
+	// assign numbers to AST nodes
 	int counter = 0;
 	std::map<std::string, int> variable_number_map;
 	auto assign_numbers = [&counter, &variable_number_map](Node *cur) -> void {
-		if (cur->getType() == "Var") {
+		if (cur->getType() == "Var") { // Different occurances of the same variable share the same number.
 			auto c = dynamic_cast<Var*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to Var*");
+				die("Internal Error: dynamic_cast failed from Node* to Var*");
 			}
 			if (variable_number_map.count(c->val) == 0) {
 				c->number = counter++;
@@ -683,28 +686,28 @@ std::map<std::string, std::string> typecheck(Node *root) {
 		}
 	};
 	dfs(root, assign_numbers);
+
 	// generate constraints
-	// Constraints have the form x = y, where x and y are type variables or -1 representing INT or -2 representing BOOL.
+	// Constraints have the form x = y, where x and y are type variables or INT or BOOL.
 	/*
-	
-	# Type Constraints ([] represents the whole expression)
-	<variable>                               : [] = x
-	<integer>                                : [] = INT
-	<boolean>                                : [] = BOOL
-	( - <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
-	( * <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
-	( / <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
-	( < <expr1> <expr2> )                    : [] = BOOL, [<expr1>] = INT, [<expr2>] = INT
-	( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL; [<expr2>] = [<expr3>]
-	( let <variable> = <expr1> in <expr2> )  : [] = [<expr2>], [<variable>] = [<expr1>]
-	
-	*/
+	 * # Type Constraints ([] represents the whole expression)
+	 * <variable>                               :
+	 * <integer>                                : [] = INT
+	 * <boolean>                                : [] = BOOL
+	 * ( - <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+	 * ( * <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+	 * ( / <expr1> <expr2> )                    : [] = INT, [<expr1>] = INT, [<expr2>] = INT
+	 * ( < <expr1> <expr2> )                    : [] = BOOL, [<expr1>] = INT, [<expr2>] = INT
+	 * ( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL, [<expr2>] = [<expr3>]
+	 * ( let <variable> = <expr1> in <expr2> )  : [] = [<expr2>], [<variable>] = [<expr1>]
+	 */
 #define INT (counter)
 #define BOOL (counter + 1)
 	std::vector<std::pair<int, int>> constraints;
+	// We must capture "counter" in this lambda expression, because the macros INT and BOOL are using "counter".
 	auto generate_constraints = [&counter, &constraints](Node *cur) -> void {
 		if (cur->getType() == "Var") {
-			// <variable> : [] = x
+			// <variable> :
 			;
 		} else if (cur->getType() == "Int") {
 			// <integer> : [] = INT
@@ -716,7 +719,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			// ( - <expr1> <expr2> ) : [] = INT, [<expr1>] = INT, [<expr2>] = INT
 			auto c = dynamic_cast<Sub*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to Sub*");
+				die("Internal Error: dynamic_cast failed from Node* to Sub*");
 			}
 			constraints.push_back(std::make_pair(c->number, INT));
 			constraints.push_back(std::make_pair(c->n1->number, INT));
@@ -725,7 +728,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			// ( * <expr1> <expr2> ) : [] = INT, [<expr1>] = INT, [<expr2>] = INT
 			auto c = dynamic_cast<Mul*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to Mul*");
+				die("Internal Error: dynamic_cast failed from Node* to Mul*");
 			}
 			constraints.push_back(std::make_pair(c->number, INT));
 			constraints.push_back(std::make_pair(c->n1->number, INT));
@@ -734,7 +737,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			// ( / <expr1> <expr2> ) : [] = INT, [<expr1>] = INT, [<expr2>] = INT
 			auto c = dynamic_cast<Div*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to Div*");
+				die("Internal Error: dynamic_cast failed from Node* to Div*");
 			}
 			constraints.push_back(std::make_pair(c->number, INT));
 			constraints.push_back(std::make_pair(c->n1->number, INT));
@@ -743,7 +746,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			// ( < <expr1> <expr2> ) : [] = BOOL, [<expr1>] = INT, [<expr2>] = INT
 			auto c = dynamic_cast<Lt*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to Lt*");
+				die("Internal Error: dynamic_cast failed from Node* to Lt*");
 			}
 			constraints.push_back(std::make_pair(c->number, BOOL));
 			constraints.push_back(std::make_pair(c->n1->number, INT));
@@ -752,7 +755,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			// ( if <expr1> then <expr2> else <expr3> ) : [] = [<expr2>], [<expr1>] = BOOL; [<expr2>] = [<expr3>]
 			auto c = dynamic_cast<If*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to If*");
+				die("Internal Error: dynamic_cast failed from Node* to If*");
 			}
 			constraints.push_back(std::make_pair(c->number, c->n2->number));
 			constraints.push_back(std::make_pair(c->n1->number, BOOL));
@@ -761,12 +764,12 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			// ( let <variable> = <expr1> in <expr2> ) : [] = [<expr2>], [<variable>] = [<expr1>]
 			auto c = dynamic_cast<Let*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to Let*");
+				die("Internal Error: dynamic_cast failed from Node* to Let*");
 			}
 			constraints.push_back(std::make_pair(c->number, c->n3->number));
 			constraints.push_back(std::make_pair(c->n1->number, c->n2->number));
 		} else {
-			die("Unknown AST node type!");
+			die("Internal Error: Unknown AST node type!");
 		}
 	};
 	dfs(root, generate_constraints);
@@ -798,7 +801,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 			} else {
 				std::string t_rx = (rx == INT) ? "INT" : "BOOL";
 				std::string t_ry = (ry == INT) ? "INT" : "BOOL";
-				die("type error: cannot unify " + t_rx + " and " + t_ry);
+				die("Type Error: cannot unify " + t_rx + " and " + t_ry);
 			}
 		}
 	}
@@ -809,7 +812,7 @@ std::map<std::string, std::string> typecheck(Node *root) {
 		if (cur->getType() == "Var") {
 			auto c = dynamic_cast<Var*>(cur);
 			if (c == nullptr) {
-				die("dynamic_cast failed from Node* to Var*");
+				die("Internal Error: dynamic_cast failed from Node* to Var*");
 			}
 			std::string t;
 			if (uf.find(c->number) == INT) {
@@ -831,19 +834,19 @@ std::map<std::string, std::string> typecheck(Node *root) {
 int main() {
 	std::string line;
 	while (true) {
+		std::cout << "...> " << std::flush;
 		getline(std::cin, line);
 		auto tokens = tokenize(line);
-		auto root = parse(tokens);
-		// printAST(root);
-		while (!tokens.empty()) {
+		auto ast_root = parse(tokens);
+		while (!tokens.empty()) { // release the tokens
 			auto t = tokens.front();
 			delete t;
 			tokens.pop();
 		}
-		auto var_type_map = typecheck(root);
-		for (auto p : var_type_map) {
+		auto variable_type_map = typecheck(ast_root);
+		for (auto p : variable_type_map) {
 			std::cout << p.first << " :: " << p.second << std::endl;
 		}
-		delete root;
+		delete ast_root; // release the AST
 	}
 }
